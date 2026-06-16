@@ -2,7 +2,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Format: Agent Skills](https://img.shields.io/badge/format-SKILL.md-success.svg)](#формат-навыка)
-[![Skills: 22](https://img.shields.io/badge/skills-22-informational.svg)](#каталог-навыков)
+[![Skills: 23](https://img.shields.io/badge/skills-23-informational.svg)](#каталог-навыков)
 
 Коллекция переиспользуемых **агентских навыков** (Agent Skills) для LLM-ассистентов
 программирования — прежде всего [Claude Code](https://docs.claude.com/en/docs/claude-code),
@@ -166,6 +166,12 @@ Copy-Item -Recurse 500-error-eliminator, django-audit, techlead-ai "$HOME\.claud
 |-------|------------|
 | [`docs-generator`](docs-generator/) | Документация для соло: README, ADR, docstrings (Google style) и синхронизация `CLAUDE.md`/`AGENTS.md`. Генерация недостающего и аудит устаревшего. |
 
+### Окружение разработки
+
+| Навык | Назначение |
+|-------|------------|
+| [`windows-pwsh-terminal`](windows-pwsh-terminal/) | Диагностика и модернизация терминала на Windows: WezTerm + PowerShell 7 + scoop. Методика с чеклистом, развилками и типовыми граблями (starship/atuin/fzf/zoxide), read-only скрипт диагностики. |
+
 ### SEO и контент
 
 | Навык | Назначение |
@@ -239,6 +245,7 @@ description: >
 ├── techlead-ai/
 ├── test-coverage-auditor/
 ├── vps-deploy-auditor/
+├── windows-pwsh-terminal/
 ├── .gitattributes      # нормализация переводов строк (LF)
 ├── .gitignore
 ├── LICENSE
