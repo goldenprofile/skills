@@ -2,7 +2,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Format: Agent Skills](https://img.shields.io/badge/format-SKILL.md-success.svg)](#формат-навыка)
-[![Skills: 23](https://img.shields.io/badge/skills-23-informational.svg)](#каталог-навыков)
+[![Skills: 24](https://img.shields.io/badge/skills-24-informational.svg)](#каталог-навыков)
 
 Коллекция переиспользуемых **агентских навыков** (Agent Skills) для LLM-ассистентов
 программирования — прежде всего [Claude Code](https://docs.claude.com/en/docs/claude-code),
@@ -11,8 +11,8 @@
 описанию навыка.
 
 Навыки сфокусированы на повседневной разработке: аудит и отладка Django/Python-проектов,
-технический SEO, анализ незнакомых кодовых баз, code review, организация работы агента и
-проверка фактов.
+технический SEO, анализ незнакомых кодовых баз, code review, организация работы агента,
+ведение заметок (Obsidian) и проверка фактов.
 
 ---
 
@@ -166,6 +166,12 @@ Copy-Item -Recurse 500-error-eliminator, django-audit, techlead-ai "$HOME\.claud
 |-------|------------|
 | [`docs-generator`](docs-generator/) | Документация для соло: README, ADR, docstrings (Google style) и синхронизация `CLAUDE.md`/`AGENTS.md`. Генерация недостающего и аудит устаревшего. |
 
+### Заметки и знания
+
+| Навык | Назначение |
+|-------|------------|
+| [`obsidian`](obsidian/) | Работа с хранилищем Obsidian (filesystem-first): клиппинги, проектные задачи со статусами, ADR, дневник, бриф проекта, синтез исследований, ревью и анализ графа тегов/ссылок. Создан совместно с Hermes Agent. |
+
 ### Окружение разработки
 
 | Навык | Назначение |
@@ -240,6 +246,7 @@ description: >
 ├── google-discover-optimize/
 ├── harness-engineering/
 ├── migration-safety-auditor/
+├── obsidian/
 ├── python-project-audit/
 ├── session-catchup/
 ├── techlead-ai/
