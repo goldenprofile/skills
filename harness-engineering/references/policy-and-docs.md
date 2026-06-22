@@ -22,6 +22,7 @@ ln -s CLAUDE.md AGENTS.md
 ## Tooling
 make lint | make fmt | make type | make test | make sec | make all
 (make работает и на Windows, и на Unix/Linux)
+В сессии: pyright-lsp (типы) · /code-review + /security-review (быстрые гейты диффа)
 
 ## MUST NOT
 - Не применять миграции на проде без прогона навыка migration-safety-auditor
@@ -30,11 +31,20 @@ make lint | make fmt | make type | make test | make sec | make all
 - <короткие проверяемые запреты под конкретный проект>
 
 ## Definition of Done
-1. make all — зелёный (lint, type, test, sec)
-2. Новый код покрыт тестами; перед релизом — навык test-coverage-auditor
-3. Затронуты миграции → навык migration-safety-auditor до деплоя
-4. Дифф отревьюен навыком techlead-ai; коммиты — по git-commit-planner
-5. Перед деплоем — навык python-project-audit (production readiness)
+Автоматика: make all — зелёный (lint, type, test, sec); типы в сессии — pyright-lsp.
+
+Перед каждым коммитом (быстрые гейты диффа):
+1. /code-review — баги + переиспользование/упрощение (--fix применяет правки)
+2. /security-review — безопасность диффа
+3. коммиты — по git-commit-planner
+
+Перед релизом / по запросу (глубокие навык-гейты):
+4. test-coverage-auditor — качество тестов (assertion'ы, моки)
+5. migration-safety-auditor — если затронуты миграции, до деплоя
+6. techlead-ai — глубокое ревью на крупном/рискованном диффе (вызывать явно)
+7. python-project-audit — production readiness (для Django — django-audit, security-линза)
+
+(Слэш-команды — гейты Claude Code; в OpenCode роль закрывают make sec + techlead-ai/django-audit.)
 
 ## Canonical Documentation
 - ARCHITECTURE.md — границы модулей, инварианты, reference-примеры
@@ -42,8 +52,10 @@ make lint | make fmt | make type | make test | make sec | make all
 - WORKFLOW.md — оркестрация (только если включён Symphony)
 ```
 
-Соло-нюанс: пункты DoD 2–5 — это **вызовы твоих же навыков**, а не пожелания. Harness здесь —
-оркестратор библиотеки, поэтому policy остаётся коротким, а «как именно проверять» живёт в навыках.
+Соло-нюанс: DoD — не пожелания, а конкретные вызовы. Быстрые гейты диффа — официальные команды
+Claude Code (`/code-review`, `/security-review`), глубину и release-готовность дают твои навыки.
+Harness здесь — оркестратор, поэтому policy остаётся коротким, а «как именно проверять» живёт
+в навыках и командах.
 
 ## ARCHITECTURE.md
 

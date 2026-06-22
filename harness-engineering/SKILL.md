@@ -5,12 +5,13 @@ description: >
   Django, FastAPI, aiogram-боты. Создаёт Makefile, CI (GitHub Actions),
   ARCHITECTURE.md, обновляет CLAUDE.md и AGENTS.md (DoD, tooling, canonical docs) и вшивает в
   Definition of Done вызовы твоих навыков (migration-safety-auditor, techlead-ai,
-  python-project-audit, test-coverage-auditor). Деплой-ориентир — systemd/nginx/redis/postgres,
+  python-project-audit, test-coverage-auditor) и официальных гейтов (/code-review,
+  /security-review, pyright-lsp). Деплой-ориентир — systemd/nginx/redis/postgres,
   не Docker. Symphony-оркестрация — опционально. Используй когда пользователь просит настроить
   harness, подготовить проект для агентов, внедрить harness engineering, настроить среду для
   агентов, DoD/tooling-обвязку, или говорит «harness», «symphony», «оркестрация агентов».
 metadata:
-  version: 1.0.0
+  version: 1.1.0
 ---
 
 # Harness Engineering — обвязка проекта для AI-агентов (соло)
@@ -27,7 +28,7 @@ metadata:
 - **Минимализм.** Policy-файл — карта на 1–2 экрана, не энциклопедия. Лишний контекст вредит.
 - **Соло ≠ команда.** «Ревьюер» — это ты + навык `techlead-ai`, а не другой человек. Гейты —
   автоматические, а не межчеловеческие.
-- **Harness — дирижёр твоей библиотеки навыков.** DoD не «напиши хорошо», а «прогони такой-то навык».
+- **Harness — дирижёр твоей библиотеки навыков и официальных гейтов.** DoD не «напиши хорошо», а «прогони такой-то навык/гейт».
 
 ## Процесс
 
@@ -57,20 +58,36 @@ overkill для соло — см. [references/symphony.md](references/symphony.
 Прогони `make all`, почини красное, запиши пойманные грабли в `tasks/lessons.md`.
 Если создан WORKFLOW.md — проверь, что YAML парсится.
 
-## Definition of Done — вшить вызовы твоих навыков
+## Definition of Done — вшить вызовы навыков и гейтов
 
-Это главная оптимизация под твою библиотеку. В DoD проекта (в CLAUDE.md/AGENTS.md) включи
-автоматические и навык-гейты:
+Это главная оптимизация под твою библиотеку. DoD проекта (в CLAUDE.md/AGENTS.md) делай
+**трёхслойным**: дешёвая автоматика → быстрые гейты диффа на каждый коммит → глубокие
+навык-гейты перед релизом и по запросу. Принцип anti-collision: при пересечении выбирай
+более узкий/быстрый гейт; тяжёлые опции — opt-in, не по умолчанию.
 
-1. `make lint` / `make type` / `make test` / `make sec` — зелёные.
-2. Новый код покрыт тестами; перед релизом — навык **`test-coverage-auditor`** (тесты без
-   assertion, моки без проверок).
-3. Перед применением миграции на проде — навык **`migration-safety-auditor`** (блокировки,
-   downtime, backfill, обратная совместимость).
-4. Ревью диффа перед коммитом — навык **`techlead-ai`**; разбивка на коммиты — `git-commit-planner`.
-5. Перед деплоем/релизом — навык **`python-project-audit`** (production readiness).
+**Автоматика (CI + локально):**
+- `make all` — `lint`/`type`/`test`/`sec` зелёные. Типы прямо в сессии — **`pyright-lsp`**
+  (батч-гейт остаётся `make type`).
 
-Так harness перестаёт быть отдельной сущностью и становится оркестратором уже имеющихся навыков.
+**Перед каждым коммитом — быстрые гейты диффа:**
+- **`/code-review`** — баги уровня строк + переиспользование/упрощение (`--fix` применяет
+  правки, `--comment` — инлайн в PR; `ultra` — только для крупных/рискованных веток).
+- **`/security-review`** — безопасность диффа.
+- разбивка на коммиты — навык **`git-commit-planner`**.
+
+**Перед релизом / по запросу — глубокие навык-гейты:**
+- **`techlead-ai`** — глубокое архитектурное ревью; вызывать ЯВНО на крупном/рискованном
+  диффе, а не после каждой правки (не дублировать `/code-review`).
+- **`test-coverage-auditor`** — качество тестов (assertion'ы, моки без проверок).
+- **`migration-safety-auditor`** — если затронуты миграции, до деплоя на прод.
+- **`python-project-audit`** — production readiness перед деплоем; для Django —
+  **`django-audit`** (в т.ч. security-линза, OWASP проектного уровня).
+
+Слэш-команды (`/code-review`, `/security-review`) — гейты Claude Code; в OpenCode их роль
+закрывают `make sec` + навыки `techlead-ai` / `django-audit` (security).
+
+Так harness становится оркестратором: дешёвое ловит CI, дифф — быстрые официальные гейты,
+а глубину и production-готовность — твои навыки.
 
 ## Чеклист готовности
 
@@ -78,7 +95,7 @@ overkill для соло — см. [references/symphony.md](references/symphony.
 - [ ] `Makefile` с целями `lint/fmt/type/test/sec/all` + цели класса проекта
 - [ ] CI (GitHub Actions): install → lint → type → test → sec
 - [ ] `CLAUDE.md` и `AGENTS.md` синхронизированы (canonical + дубль/симлинк)
-- [ ] Policy ≤ 1–2 экранов; DoD ссылается на твои навыки (см. выше)
+- [ ] Policy ≤ 1–2 экранов; DoD ссылается на твои навыки и официальные гейты (см. выше)
 - [ ] `ARCHITECTURE.md` (границы, инварианты, reference-примеры)
 - [ ] `tasks/lessons.md` инициализирован
 - [ ] Деплой-заметка под systemd/nginx (не навязывать Docker)

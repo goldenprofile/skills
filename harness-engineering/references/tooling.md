@@ -23,6 +23,10 @@ sec:   ; $(RUN) bandit -q -r . -c pyproject.toml && $(RUN) pip-audit
 all: lint type test sec
 ```
 
+> Батч-гейты CI: `make type` (типы), `make sec` (bandit + pip-audit). В сессии их дополняют
+> `pyright-lsp` (типы по мере правок) и `/code-review` + `/security-review` (ревью диффа) —
+> см. DoD в [policy-and-docs.md](policy-and-docs.md).
+
 ## Цели под класс проекта
 
 Добавляй к базе только то, что соответствует проекту.
