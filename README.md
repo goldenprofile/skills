@@ -2,7 +2,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Format: Agent Skills](https://img.shields.io/badge/format-SKILL.md-success.svg)](#формат-навыка)
-[![Skills: 24](https://img.shields.io/badge/skills-24-informational.svg)](#каталог-навыков)
+[![Skills: 25](https://img.shields.io/badge/skills-25-informational.svg)](#каталог-навыков)
 
 Коллекция переиспользуемых **агентских навыков** (Agent Skills) для LLM-ассистентов
 программирования — прежде всего [Claude Code](https://docs.claude.com/en/docs/claude-code),
@@ -165,6 +165,7 @@ Copy-Item -Recurse 500-error-eliminator, django-audit, techlead-ai "$HOME\.claud
 | Навык | Назначение |
 |-------|------------|
 | [`docs-generator`](docs-generator/) | Документация для соло: README, ADR, docstrings (Google style) и синхронизация `CLAUDE.md`/`AGENTS.md`. Генерация недостающего и аудит устаревшего. |
+| [`spec-writer`](spec-writer/) | Проектные документы в трёх режимах: spec (техспецификация: проблема, цели, архитектура, ADR-решения, риски), plan (фазы, оценки, зависимости) и brief (аналитическая записка для руководства, без кода). Создан совместно с Hermes Agent. |
 
 ### Заметки и знания
 
@@ -249,6 +250,7 @@ description: >
 ├── obsidian/
 ├── python-project-audit/
 ├── session-catchup/
+├── spec-writer/
 ├── techlead-ai/
 ├── test-coverage-auditor/
 ├── vps-deploy-auditor/
