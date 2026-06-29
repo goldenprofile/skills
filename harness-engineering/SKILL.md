@@ -11,7 +11,7 @@ description: >
   harness, подготовить проект для агентов, внедрить harness engineering, настроить среду для
   агентов, DoD/tooling-обвязку, или говорит «harness», «symphony», «оркестрация агентов».
 metadata:
-  version: 1.1.0
+  version: 1.2.0
 ---
 
 # Harness Engineering — обвязка проекта для AI-агентов (соло)
@@ -26,6 +26,12 @@ metadata:
 - **Менять нужно среду, а не модель.** Harness = команды + ограничения + циклы проверки.
 - **Если правило нельзя проверить автоматически — его нет.** Enforcement (CI/линтер/тест) > документация.
 - **Минимализм.** Policy-файл — карта на 1–2 экрана, не энциклопедия. Лишний контекст вредит.
+- **Память трёхслойна, committed policy переносим.** Память Claude Code: личное на все проекты
+  (`~/.claude/CLAUDE.md`) ↔ проектное в репо (`./CLAUDE.md`, **должно быть OS-переносимым**) ↔
+  проектное+машинное вне репо (`./CLAUDE.local.md`, gitignored). Машинная специфика («я на
+  Windows, сервисы на удалённом Linux, не дёргай systemctl») в committed-файл **не кладётся** —
+  на другой ОС она ложна и навязывается всем. Рантайм формулируй как факт проекта («нужны
+  Postgres+Redis»), не как «ты на Windows».
 - **Соло ≠ команда.** «Ревьюер» — это ты + навык `techlead-ai`, а не другой человек. Гейты —
   автоматические, а не межчеловеческие.
 - **Harness — дирижёр твоей библиотеки навыков и официальных гейтов.** DoD не «напиши хорошо», а «прогони такой-то навык/гейт».
@@ -44,19 +50,40 @@ overkill для соло — см. [references/symphony.md](references/symphony.
 
 ### Фаза 3 — Реализация (по иерархии источников истины)
 
-1. **Enforcement** — Makefile (работает и на Windows, и на Unix) + CI. Цели под Python-стек
-   (`lint`/`fmt`/`type`/`test`/`sec`/`all`) и под класс проекта (Django/FastAPI/бот). Полные
-   шаблоны: [references/tooling.md](references/tooling.md).
-2. **Policy** — `CLAUDE.md` **и** `AGENTS.md` (OpenCode читает второй): один canonical-файл +
-   дубль/симлинк. Содержит только Tooling, MUST NOT, DoD, Canonical Docs.
-   Шаблоны: [references/policy-and-docs.md](references/policy-and-docs.md).
+0. **Аудит существующей policy (до создания нового!).** Если `CLAUDE.md`/`AGENTS.md` уже есть —
+   не дописывай аддитивно. Сначала **прочитай и вычисти**: машинно-специфичное → в
+   `~/.claude/CLAUDE.md` или `CLAUDE.local.md`; устаревшее/протухшие ссылки → убрать; дубли того,
+   что проверяет CI → убрать. Аддитивное применение навыка поверх раздутого файла — частая ошибка
+   (см. Антипаттерны).
+1. **Enforcement** — три уровня, от сильного к слабому:
+   - **Makefile** (работает и на Windows, и на Unix) + **CI**. Цели под Python-стек
+     (`lint`/`fmt`/`type`/`test`/`sec`/`all`) и под класс проекта. Полные шаблоны:
+     [references/tooling.md](references/tooling.md).
+   - **Hooks** (`.claude/settings.json` → `hooks`) — enforcement, не зависящий от того, вспомнит
+     ли агент про Makefile. `PreToolUse` может **заблокировать** вызов (exit 2 / JSON `deny`),
+     `PostToolUse` — среагировать на правку (прогнать линт на изменённом файле и вернуть результат).
+     Это и есть «среда не даёт забыть». Паттерны: [references/policy-and-docs.md](references/policy-and-docs.md).
+   - **Permissions** (`.claude/settings.json` → `permissions.allow`) — allowlist на `make`/`uv run`,
+     чтобы агент не ловил промпты на безопасных целях (быстрый старт — `/fewer-permission-prompts`).
+2. **Policy** — память **трёхслойна** (см. Принципы): committed `./CLAUDE.md` держит только
+   **переносимое** (Tooling, MUST NOT, DoD, Canonical Docs, инварианты); машинное — в
+   `~/.claude/CLAUDE.md`/`CLAUDE.local.md`. `AGENTS.md` — **тонкий указатель** на `CLAUDE.md`
+   (не копия/симлинк: копия разъезжается, симлинк на Windows ненадёжен). Длинные доки подключай
+   импортом `@ARCHITECTURE.md`, а не копипастой. Шаблоны: [references/policy-and-docs.md](references/policy-and-docs.md).
 3. **Architecture** — `ARCHITECTURE.md`: границы модулей, инварианты, reference-примеры.
 4. **Lessons** — `tasks/lessons.md`: цикл «ошибка агента → правило → проверка».
 5. **Symphony** — только если выбрано: [references/symphony.md](references/symphony.md).
 
 ### Фаза 4 — Верификация
-Прогони `make all`, почини красное, запиши пойманные грабли в `tasks/lessons.md`.
-Если создан WORKFLOW.md — проверь, что YAML парсится.
+1. **Гейт существует ≠ гейт работает.** Прогони `make lint`/`type` (на Windows — без БД) и убедись,
+   что `make test` хотя бы **коллектит** (для Django: `[tool.pytest.ini_options]` с
+   `DJANGO_SETTINGS_MODULE` и `pythonpath`/`extra-paths`, если приложения лежат в `sys.path`).
+   Частый провал: тесты вроде есть, но pytest их не собирает.
+2. **На легаси не «чини всё красное».** Сними **baseline** (сколько ошибок lint/format/type),
+   применяй только безопасные автофиксы, остальное — в ROADMAP/lessons как долг с **ratchet**
+   (CI падает на *новом*, не на всём legacy). «Зелёный `make all`» на зрелом проекте — цель, а не
+   предусловие сдачи harness.
+3. Запиши пойманные грабли в `tasks/lessons.md`. Если создан WORKFLOW.md — проверь, что YAML парсится.
 
 ## Definition of Done — вшить вызовы навыков и гейтов
 
@@ -93,13 +120,18 @@ overkill для соло — см. [references/symphony.md](references/symphony.
 
 **Базовый harness (обязательно):**
 - [ ] `Makefile` с целями `lint/fmt/type/test/sec/all` + цели класса проекта
-- [ ] CI (GitHub Actions): install → lint → type → test → sec
-- [ ] `CLAUDE.md` и `AGENTS.md` синхронизированы (canonical + дубль/симлинк)
+- [ ] CI (GitHub Actions): джобы по capability — `lint`+`type` (без сервисов), `test`
+      (с Postgres/Redis), `sec`; safe-by-default до настройки секретов; actions пиннятся по SHA
+- [ ] `.claude/settings.json` — `permissions.allow` на `make`/`uv run` + хук `PostToolUse`
+      (линт изменённого файла); опц. `PreToolUse` на рискованные `Bash`
+- [ ] committed `CLAUDE.md` **переносим** (без машинной специфики); машинное — в
+      `~/.claude/CLAUDE.md`/`CLAUDE.local.md` (последний в `.gitignore`); `AGENTS.md` — тонкий указатель
 - [ ] Policy ≤ 1–2 экранов; DoD ссылается на твои навыки и официальные гейты (см. выше)
-- [ ] `ARCHITECTURE.md` (границы, инварианты, reference-примеры)
+- [ ] `ARCHITECTURE.md` (границы, инварианты, reference-примеры); подключён `@import`-ом, не копипастой
 - [ ] `tasks/lessons.md` инициализирован
 - [ ] Деплой-заметка под systemd/nginx (не навязывать Docker)
-- [ ] `make all` зелёный
+- [ ] Гейты не только существуют, но и **запускаются** (pytest коллектит; `make lint`/`type` зелёные
+      или с зафиксированным baseline)
 
 **Symphony (опционально):** см. чеклист в [references/symphony.md](references/symphony.md).
 
@@ -111,6 +143,14 @@ overkill для соло — см. [references/symphony.md](references/symphony.
 - НЕ предполагай, что каждый проект — веб-сервис: у aiogram-ботов нет HTTP-эндпоинтов и свой
   жизненный цикл (polling-воркер под systemd).
 - НЕ ломай существующий код ради «чистоты» — минимальное воздействие.
+- НЕ клади машинно/OS-специфичное («ты на Windows», «сервисы на удалённом Ubuntu», `systemctl`) в
+  committed `CLAUDE.md` — на другой ОС это ложь. Только `~/.claude/CLAUDE.md` или `CLAUDE.local.md`.
+- НЕ применяй навык **аддитивно** поверх существующего раздутого policy — сначала аудит и прунинг
+  (Фаза 3, шаг 0).
+- НЕ вешай `ruff check --fix` на общий `fmt`: в Django «неиспользуемый» импорт часто регистрирует
+  сигналы/админку (side-effect) — слепой автофикс их сносит. Формат и автофикс — раздельно.
+- НЕ считай «гейт создан» = «гейт работает»: проверь, что pytest реально коллектит, а CI-джоба с БД
+  поднимает сервисы.
 
 ## Растущая автономия (соло)
 

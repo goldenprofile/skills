@@ -2,17 +2,63 @@
 
 Policy — карта на 1–2 экрана, не энциклопедия. Дублировать в ней то, что проверяет CI, нельзя.
 
-## CLAUDE.md + AGENTS.md
+## Трёхслойная память (куда что класть)
 
-Ты используешь Claude Code и OpenCode. Claude Code читает `CLAUDE.md`, OpenCode — `AGENTS.md`.
-Держи **один canonical-файл и дубль/симлинк**, чтобы не разъезжались:
+| Слой | Файл | В git? | Что туда |
+|---|---|---|---|
+| Личное, на все проекты | `~/.claude/CLAUDE.md` | ❌ | язык, роутинг навыков, **среда моих машин** (ОС/шелл, где крутятся сервисы) |
+| **Проект, переносимое** | `./CLAUDE.md` | ✅ | что за проект, рантайм (OS-агностично), tooling, DoD, инварианты, Canonical Docs |
+| Проект + эта машина | `./CLAUDE.local.md` | ❌ (gitignore) | проектно-машинное, что не должно попасть в репо |
 
-```bash
-# из корня проекта (Git Bash / WSL)
-ln -s CLAUDE.md AGENTS.md
+**Главное правило:** committed `./CLAUDE.md` обязан быть **переносим** — открой его на другой ОС,
+он не должен противоречить. Машинно-специфичное («ты на Windows», «сервисы на удалённом Ubuntu»,
+`systemctl`) → в `~/.claude/CLAUDE.md` или `CLAUDE.local.md`, **не в репо**. Рантайм формулируй как
+факт проекта: «нужны Postgres+Redis; `test`/`migrate` → CI/окружение с БД», а не «ты на Windows».
+`CLAUDE.local.md` не устарел и поддерживается — добавь его в `.gitignore`.
+
+## CLAUDE.md + AGENTS.md (не копия, а указатель)
+
+Claude Code читает `CLAUDE.md`, OpenCode и многие агенты — `AGENTS.md`. **Не веди копию и не
+полагайся на симлинк** (копия разъезжается; симлинк на Windows ненадёжен). Сделай **canonical =
+`CLAUDE.md`**, а `AGENTS.md` — тонкий указатель из 2–3 строк: «канонические правила — в `CLAUDE.md`,
+читай его». Контент не дублируется → рассинхрона нет.
+
+**Длинные доки — импортом, не копипастой.** В `CLAUDE.md` подключай через `@path` (раскрывается в
+контекст, относительные пути — от файла-источника, до 4 уровней рекурсии, в backticks не
+раскрывается):
+
+```markdown
+@ARCHITECTURE.md
+@docs/ROADMAP.md
 ```
-На Windows симлинк может не сработать без прав — тогда держи AGENTS.md как копию и обновляй оба,
-либо собирай оба из одного источника. Главное — не вести две независимые версии.
+
+## Hooks + permissions (enforcement, не зависящий от памяти агента)
+
+`.claude/settings.json` (project-уровень, коммитится) — слой, который **не даёт забыть** прогнать
+проверки, в отличие от Makefile, который агент должен вспомнить запустить:
+
+```jsonc
+{
+  "permissions": {
+    "allow": ["Bash(make lint:*)", "Bash(make fmt-check:*)", "Bash(make type:*)", "Bash(uv run:*)"]
+  },
+  "hooks": {
+    "PostToolUse": [
+      { "matcher": "Write|Edit",
+        // путь изменённого файла хук читает из JSON на stdin (.tool_input.file_path)
+        "hooks": [{ "type": "command",
+          "command": "f=$(jq -r '.tool_input.file_path'); uv run ruff check --quiet \"$f\"" }] }
+    ]
+  }
+}
+```
+
+- `PostToolUse` на `Write|Edit` → линт изменённого файла сразу после правки (результат уходит агенту).
+- `PreToolUse` может **блокировать** (exit 2 / JSON `permissionDecision: deny`) — например, не дать
+  закоммитить с плохим сообщением или применить миграцию без прогона `migration-safety-auditor`.
+- `permissions.allow` снимает промпты на безопасных целях; быстрый старт — `/fewer-permission-prompts`.
+- Машинно-личные allow/hooks → в `~/.claude/settings.json`; `.claude/settings.local.json` (gitignored)
+  — для машинных оверрайдов. Точные имена событий и схему сверяй с docs Claude Code (меняются).
 
 ## Шаблон policy-файла (CLAUDE.md / AGENTS.md)
 
