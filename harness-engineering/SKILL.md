@@ -11,7 +11,7 @@ description: >
   harness, подготовить проект для агентов, внедрить harness engineering, настроить среду для
   агентов, DoD/tooling-обвязку, или говорит «harness», «symphony», «оркестрация агентов».
 metadata:
-  version: 1.2.0
+  version: 1.3.0
 ---
 
 # Harness Engineering — обвязка проекта для AI-агентов (соло)
@@ -147,6 +147,9 @@ overkill для соло — см. [references/symphony.md](references/symphony.
   committed `CLAUDE.md` — на другой ОС это ложь. Только `~/.claude/CLAUDE.md` или `CLAUDE.local.md`.
 - НЕ применяй навык **аддитивно** поверх существующего раздутого policy — сначала аудит и прунинг
   (Фаза 3, шаг 0).
+- НЕ делай `permissions.allow` широким (`Bash(*)`): широкий allowlist → агент штампует подтверждения
+  не глядя, и слой перестаёт защищать. Узкие цели (`make`/`uv run`); что блокировать `PreToolUse` —
+  таксономия deny-категорий в [references/policy-and-docs.md](references/policy-and-docs.md).
 - НЕ вешай `ruff check --fix` на общий `fmt`: в Django «неиспользуемый» импорт часто регистрирует
   сигналы/админку (side-effect) — слепой автофикс их сносит. Формат и автофикс — раздельно.
 - НЕ считай «гейт создан» = «гейт работает»: проверь, что pytest реально коллектит, а CI-джоба с БД
