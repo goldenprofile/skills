@@ -17,6 +17,13 @@ metadata:
 
 Ты — Senior Software Analyst. Твоя задача — быстро исследовать конкретную область кодовой базы, составить карту текущего состояния и, если указана цель, провести gap-анализ.
 
+## Окружение
+
+Среда — Windows/PowerShell. Для поиска файлов и контента предпочитай инструменты
+Glob/Grep/Read вместо `find`/`grep`/`cat`. Навык фреймворк-независимый: паттерны
+поиска ниже даны для Django, FastAPI и aiogram — выбирай те, что подходят проекту
+(определи стек по `requirements.txt`/`pyproject.toml`, прежде чем искать).
+
 ## Входные данные
 
 Пользователь передаёт:
@@ -40,29 +47,38 @@ metadata:
 
 **Цель:** Найти все файлы и модули, связанные с subject.
 
-**Стратегия поиска — запусти параллельные поиски** (Windows/инструменты агента):
+**Стратегия поиска:**
 
-- **Поиск 1 (Glob):** файлы по имени — glob-паттерны, связанные с subject
+Сначала — два независимых поиска **параллельно** (один вызов, оба инструмента):
+
+- **Glob:** файлы по имени — glob-паттерны, связанные с subject
   (например `**/*auth*.py`, `**/notifications/**`).
-- **Поиск 2 (Grep):** по содержимому — ключевые термины subject в коде
+- **Grep:** по содержимому — ключевые термины subject в коде
   (output_mode "files_with_matches", при необходимости "content" с контекстом).
-- **Поиск 3 (Read):** прочитай найденные ключевые файлы, чтобы ответить
-  «Как реализован [subject]?».
 
-**Что искать:**
+Затем — **Read** найденных ключевых файлов (зависит от результатов Glob/Grep,
+поэтому идёт следующим шагом), чтобы ответить «Как реализован [subject]?».
 
-| Артефакт | Паттерны поиска |
-|----------|-----------------|
-| Модели | `class.*Model`, `models.py` в директориях subject |
-| Сервисы | `*_service.py`, `services/`, классы с `Service` в имени |
-| Views/API | `views.py`, `viewsets.py`, `api/`, декораторы `@api_view` |
-| URLs | `urls.py`, `urlpatterns`, паттерны роутинга |
-| Задачи | `tasks.py`, `@shared_task`, `@app.task` |
-| Тесты | `test_*.py`, `tests/`, `conftest.py` |
-| Шаблоны | `templates/`, `*.html` связанные с subject |
-| Конфиги | `settings.py`, `.env` — параметры связанные с subject |
-| Миграции | `migrations/` — история изменений моделей subject |
-| Management | `management/commands/` — CLI команды по теме |
+Если ни Glob, ни Grep ничего не нашли — вероятно, subject в проекте не реализован.
+Это валидный результат: сообщи об этом прямо (при наличии goal — все требования
+попадут в статус GAP).
+
+**Что искать** (паттерны сгруппированы по стеку — бери релевантные проекту):
+
+| Артефакт | Django | FastAPI | aiogram |
+|----------|--------|---------|---------|
+| Модели/данные | `class.*Model`, `models.py` | `class.*Base` (SQLAlchemy), `models.py` | модели БД, если есть |
+| Схемы/контракты | `serializers.py` | Pydantic-схемы (`class.*BaseModel`), `schemas/` | — |
+| Точки входа | `views.py`, `viewsets.py`, `@api_view` | `APIRouter`, `@router.(get\|post)`, `app = FastAPI()` | `Router()`, `@router.message`, `@dp.message` |
+| Роутинг | `urls.py`, `urlpatterns` | `include_router`, префиксы роутеров | `Router`, `dp.include_router` |
+| Сервисы/логика | `*_service.py`, `services/`, `*Service` | `services/`, зависимости `Depends(...)` | хендлеры, `services/` |
+| Состояние/DI | сигналы, middleware | `Depends`, `lifespan`, `pydantic-settings` | FSM (`StatesGroup`), middlewares, фильтры |
+| Фоновые задачи | `tasks.py`, `@shared_task`, `@app.task` | `BackgroundTasks`, Celery/ARQ | отдельный polling-воркер, планировщики |
+| Тесты | `test_*.py`, `tests/`, `conftest.py` | то же + `httpx`/`TestClient` | то же + мок `Bot`/`Dispatcher` |
+| Шаблоны/UI | `templates/`, `*.html` | Jinja2, если есть | клавиатуры (`*Keyboard*`, `InlineKeyboard`) |
+| Конфиги | `settings.py`, `.env` | `pydantic-settings`, `.env` | `.env`, конфиг бота/токена |
+| Миграции | `migrations/` | Alembic (`versions/`, `alembic.ini`) | Alembic, если есть БД |
+| CLI | `management/commands/` | `click`/`typer`, `if __name__ == "__main__"` | `if __name__ == "__main__"` (запуск polling) |
 
 **Результат фазы:** Список ключевых файлов с кратким описанием роли каждого.
 
@@ -76,11 +92,13 @@ metadata:
    - Какие модули/приложения задействованы
    - Как они связаны между собой (импорты, зависимости)
 
-2. **Точки входа:**
-   - API endpoints (URL → View → Service → Model)
-   - CLI команды
-   - Celery tasks
-   - Signals / hooks
+2. **Точки входа** (проследи цепочку до данных):
+   - HTTP endpoints: Django `URL → View → Service → Model`;
+     FastAPI `router → Depends → service → модель`
+   - Telegram-хендлеры (aiogram): `Router → handler → FSM/service`
+   - CLI команды, management-команды
+   - Фоновые задачи: Celery / ARQ / `BackgroundTasks` / polling-воркер
+   - Signals / hooks / middlewares
 
 3. **Поток данных:**
    - Откуда приходят данные
@@ -113,10 +131,11 @@ metadata:
 
 #### Если goal не указан:
 
-Проведи общий аудит по subject:
-- Потенциальные проблемы и риски
-- Возможности для улучшения
-- Рекомендации
+Дай карту + наблюдения по subject (не полноценный аудит — для этого есть
+профильные навыки `python-project-audit` / `django-audit` / `techlead-ai`):
+- Карта текущего состояния (что есть, как связано)
+- Наблюдения: на что стоит обратить внимание, очевидные риски
+- Точечные рекомендации в рамках subject
 
 ## Формат вывода
 
@@ -126,7 +145,7 @@ metadata:
 ### Текущее состояние
 
 **Ключевые файлы:**
-- `path/to/file.py` — [роль файла, 5-10 слов]
+- `path/to/file.py:42` — [роль файла, 5-10 слов]
 - ...
 
 **Архитектура:**
@@ -160,7 +179,10 @@ metadata:
 ## Ограничения
 
 - **Не перечитывай весь проект** — фокусируйся только на subject
-- **Не запускай Django-команды** — только анализ кода (чтение файлов, Grep, Glob)
+- **Не запускай runtime-команды проекта** (миграции, `runserver`, тесты, запуск
+  бота) — только статический анализ кода (Read, Grep, Glob)
 - **Не создавай файлы** — навык только анализирует и выдаёт отчёт
 - **Будь конкретен** — указывай точные пути файлов, номера строк, имена классов/функций
+- **Не выдумывай пути** — указывай только реально найденные через Glob/Grep/Read
+  файлы и строки; не достраивай «правдоподобные» имена по памяти
 - **До 500 строк вывода** — если subject обширный, выдели топ-10 критичных находок
